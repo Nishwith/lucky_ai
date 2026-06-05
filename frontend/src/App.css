@@ -1,0 +1,242 @@
+:root {
+  font-family: 'Inter', system-ui, sans-serif;
+  color-scheme: dark;
+  margin: 0;
+  padding: 0;
+  background-color: #030712;
+  overflow: hidden;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+}
+
+/* Animated Cyber Grid Background */
+.tech-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background-image:
+    linear-gradient(rgba(56, 189, 248, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(56, 189, 248, 0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+  background-position: center center;
+  perspective: 1000px;
+}
+
+/* Sweeping Scanner Line */
+.scanner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.8), transparent);
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.5);
+  z-index: -1;
+  animation: scan 8s linear infinite;
+  opacity: 0.5;
+}
+
+@keyframes scan {
+  0% {
+    transform: translateY(-10vh);
+  }
+
+  100% {
+    transform: translateY(110vh);
+  }
+}
+
+/* Master Layout */
+.os-layout {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  color: #e2e8f0;
+}
+
+/* Integrated, Borderless Sidebar */
+.sidebar {
+  width: 320px;
+  padding: 40px 32px;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(90deg, rgba(3, 7, 18, 0.9) 0%, rgba(3, 7, 18, 0.4) 100%);
+  backdrop-filter: blur(12px);
+  border-right: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.brand-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 60px;
+}
+
+.brand-text {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  background: linear-gradient(to right, #38bdf8, #818cf8, #c084fc);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Clean List Architecture (No Boxes/Cards) */
+.agent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.agent-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 8px;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 15px;
+  font-weight: 500;
+  text-align: left;
+  transition: color 0.3s ease;
+  outline: none;
+}
+
+.agent-item:hover {
+  color: #f8fafc;
+}
+
+.agent-item.active {
+  color: #38bdf8;
+}
+
+/* The Glowing Active Indicator */
+.active-indicator {
+  position: absolute;
+  left: -32px;
+  width: 3px;
+  height: 50%;
+  background: #38bdf8;
+  border-radius: 0 4px 4px 0;
+  box-shadow: 0 0 12px #38bdf8;
+}
+
+/* Chat Canvas */
+.chat-canvas {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.messages-container {
+  flex: 1;
+  padding: 40px 60px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+/* Integrated Message Style (Unboxed) */
+.message-row {
+  display: flex;
+  gap: 20px;
+  max-width: 800px;
+}
+
+.message-row.user {
+  margin-left: auto;
+  flex-direction: row-reverse;
+}
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.avatar.ai {
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.2);
+  box-shadow: inset 0 0 10px rgba(56, 189, 248, 0.1);
+}
+
+.message-content {
+  font-size: 15px;
+  line-height: 1.7;
+  padding-top: 6px;
+}
+
+/* Tech Input Area */
+.input-dock {
+  padding: 32px 60px 40px;
+  background: linear-gradient(0deg, rgba(3, 7, 18, 0.9) 0%, transparent 100%);
+}
+
+.input-wrapper {
+  position: relative;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.input-glow {
+  position: absolute;
+  inset: -1px;
+  background: linear-gradient(90deg, #38bdf8, #818cf8, #c084fc);
+  border-radius: 16px;
+  filter: blur(8px);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.input-wrapper:focus-within .input-glow {
+  opacity: 0.4;
+}
+
+.tech-input {
+  position: relative;
+  width: 100%;
+  background: rgba(3, 7, 18, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 20px 24px;
+  padding-right: 60px;
+  border-radius: 16px;
+  color: white;
+  font-size: 15px;
+  outline: none;
+  box-sizing: border-box;
+  backdrop-filter: blur(10px);
+}
+
+.send-action {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: #38bdf8;
+  padding: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.send-action:hover {
+  color: #f8fafc;
+  filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.8));
+}

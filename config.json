@@ -1,0 +1,74 @@
+{
+  "_comment": "Lucky AI — change provider here. Nothing else in the codebase changes.",
+  "lucky": {
+    "name": "Lucky",
+    "version": "1.0.0",
+    "user_name": "Nishwith",
+    "language": "en-te",
+    "_note": "language: en=English only, en-te=English+Telugu mix"
+  },
+  "provider": "ollama",
+  "model": "qwen3:8b",
+  "api_base": "http://localhost:11434",
+  "api_key": "",
+  "_providers": {
+    "ollama_local": {
+      "provider": "ollama",
+      "model": "qwen3:8b",
+      "api_base": "http://localhost:11434",
+      "api_key": ""
+    },
+    "groq_free": {
+      "provider": "groq",
+      "model": "llama-3.3-70b-versatile",
+      "api_base": "",
+      "api_key": "gsk_YOUR_KEY"
+    },
+    "openai": {
+      "provider": "openai",
+      "model": "gpt-4o-mini",
+      "api_base": "",
+      "api_key": "sk-YOUR_KEY"
+    },
+    "anthropic": {
+      "provider": "anthropic",
+      "model": "claude-haiku-4-5-20251001",
+      "api_base": "",
+      "api_key": "sk-ant-YOUR_KEY"
+    },
+    "gemini_free": {
+      "provider": "gemini",
+      "model": "gemini/gemini-2.0-flash",
+      "api_base": "",
+      "api_key": "YOUR_KEY"
+    },
+    "deepseek_cheap": {
+      "provider": "deepseek",
+      "model": "deepseek-chat",
+      "api_base": "",
+      "api_key": "YOUR_KEY"
+    },
+    "openrouter": {
+      "provider": "openrouter",
+      "model": "meta-llama/llama-3.3-70b",
+      "api_base": "",
+      "api_key": "sk-or-YOUR_KEY"
+    }
+  },
+  "memory": {
+    "db_path": "./data/lucky_core.db",
+    "vector_path": "./data/vector_store",
+    "max_history": 20,
+    "auto_save": true
+  },
+  "voice": {
+    "enabled": false,
+    "whisper_model": "base",
+    "tts_voice": "en_US-lessac-medium"
+  },
+  "server": {
+    "host": "0.0.0.0",
+    "port": 8000,
+    "reload": true
+  }
+}
