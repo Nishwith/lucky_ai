@@ -10,9 +10,9 @@ from .config_loader import PROVIDER
 
 # ── Specialist models (only used when PROVIDER is ollama) ─────────────────────
 SPECIALIST = {
-    "coding":  "ollama/qwen2.5-coder:7b-instruct-q4_K_M",
-    "ai_dev":  "ollama/deepseek-r1:7b",
-    "vision":  "ollama/gemma4:e4b",
+    "coding":  "ollama/qwen2.5-coder:7b",
+    # "ai_dev":  "ollama/deepseek-r1:7b",
+    # "vision":  "ollama/gemma4:e4b",
     "default": f"ollama/qwen3:8b",
 }
 
@@ -25,17 +25,17 @@ ROUTING_RULES = {
         "frontend", "database", "sql", "docker", "deploy", "git", "npm",
         "pip", "install", "import", "async", "refactor", "test", "unittest"
     ],
-    "ai_dev": [
-        "pytorch", "tensorflow", "huggingface", "transformers", "fine-tune",
-        "finetune", "train", "model", "dataset", "embedding", "vector",
-        "langchain", "langgraph", "crewai", "autogen", "rag", "agent",
-        "inference", "onnx", "lora", "qlora", "loss function", "epoch",
-        "neural", "ai model", "ml model", "machine learning"
-    ],
-    "vision": [
-        "screen", "look at", "see my", "what's on", "image", "screenshot",
-        "ui design", "visual", "design review", "what do you see"
-    ],
+    # "ai_dev": [
+    #     "pytorch", "tensorflow", "huggingface", "transformers", "fine-tune",
+    #     "finetune", "train", "model", "dataset", "embedding", "vector",
+    #     "langchain", "langgraph", "crewai", "autogen", "rag", "agent",
+    #     "inference", "onnx", "lora", "qlora", "loss function", "epoch",
+    #     "neural", "ai model", "ml model", "machine learning"
+    # ],
+    # "vision": [
+    #     "screen", "look at", "see my", "what's on", "image", "screenshot",
+    #     "ui design", "visual", "design review", "what do you see"
+    # ],
 }
 
 

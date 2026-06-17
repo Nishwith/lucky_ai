@@ -11,30 +11,29 @@ import chromadb
 from chromadb.config import Settings
 from ..brain.config_loader import VEC_PATH
 
-# ── Client ─────────────────────────────────────────────────────────────────────
-def _get_client() -> chromadb.PersistentClient:
-    VEC_PATH.mkdir(parents=True, exist_ok=True)
-    return chromadb.PersistentClient(
-        path=str(VEC_PATH),
-        settings=Settings(anonymized_telemetry=False)
-    )
+# ── GLOBAL INITIALIZATION (THE FIX) ────────────────────────────────────────────
+# We initialize the database ONCE when the server boots. 
+# This prevents the massive lag on every chat message.
+VEC_PATH.mkdir(parents=True, exist_ok=True)
+_client = chromadb.PersistentClient(
+    path=str(VEC_PATH),
+    settings=Settings(anonymized_telemetry=False)  # Kills the telemetry spam
+)
 
+# Load collections into RAM instantly
+_memory_col = _client.get_or_create_collection("lucky_memory")
+_style_col  = _client.get_or_create_collection("lucky_style")
+_work_col   = _client.get_or_create_collection("lucky_work")
 
 def init_vector_db():
-    client = _get_client()
-    client.get_or_create_collection("lucky_memory")
-    client.get_or_create_collection("lucky_style")
-    client.get_or_create_collection("lucky_work")
     print("[Lucky AI Memory] ChromaDB initialized ✓")
 
 
 # ── Core memory operations ─────────────────────────────────────────────────────
 def remember(text: str, category: str = "general", metadata: dict = None):
     """Store any piece of information in semantic memory."""
-    client = _get_client()
-    col    = client.get_or_create_collection("lucky_memory")
-    uid    = str(time.time())
-    col.add(
+    uid = str(time.time())
+    _memory_col.add(
         documents=[text],
         ids=[uid],
         metadatas=[{
@@ -44,20 +43,37 @@ def remember(text: str, category: str = "general", metadata: dict = None):
         }]
     )
 
-
 def recall(query: str, n: int = 5, category: str = None) -> list[str]:
-    """Find the most relevant memories for a given query."""
-    client = _get_client()
-    col    = client.get_or_create_collection("lucky_memory")
+    """Find the most relevant memories, filtered by relevance score."""
     try:
         where = {"category": category} if category else None
-        results = col.query(
+        
+        # We must explicitly ask for 'distances' to measure relevance
+        results = _memory_col.query(
             query_texts=[query],
-            n_results=min(n, col.count() or 1),
-            where=where
+            n_results=min(n, _memory_col.count() or 1),
+            where=where,
+            include=["documents", "distances"] 
         )
-        return results["documents"][0] if results["documents"] else []
-    except Exception:
+        
+        if not results["documents"] or not results["documents"][0]:
+            return []
+            
+        docs = results["documents"][0]
+        distances = results["distances"][0]
+        
+        # ✅ THE FILTER: Only keep memories with a strong mathematical match
+        # ChromaDB uses L2 distance by default. Lower is better. 
+        # A threshold of 1.25 is an excellent cut-off for "actually relevant".
+        relevant_memories = []
+        for doc, dist in zip(docs, distances):
+            if dist < 1.25:  
+                relevant_memories.append(doc)
+                
+        return relevant_memories
+        
+    except Exception as e:
+        print(f"Memory search error: {e}")
         return []
 
 
@@ -65,29 +81,22 @@ def recall(query: str, n: int = 5, category: str = None) -> list[str]:
 def save_style(domain: str, description: str):
     """
     Save how the user likes things done in a specific domain.
-    e.g. save_style("coding", "Prefers async Python, FastAPI, type hints everywhere")
-    e.g. save_style("content", "Casual Telugu-English mix, uses 'bro', short sentences")
     """
-    client = _get_client()
-    col    = client.get_or_create_collection("lucky_style")
-    # Upsert — replace existing style for this domain
     try:
-        col.delete(where={"domain": domain})
+        _style_col.delete(where={"domain": domain})
     except Exception:
         pass
-    col.add(
+        
+    _style_col.add(
         documents=[description],
         ids=[f"style_{domain}_{int(time.time())}"],
         metadatas=[{"domain": domain, "updated": datetime.datetime.now().isoformat()}]
     )
 
-
 def get_style(domain: str) -> str:
     """Retrieve the user's style for a specific domain."""
-    client = _get_client()
-    col    = client.get_or_create_collection("lucky_style")
     try:
-        results = col.query(
+        results = _style_col.query(
             query_texts=[domain],
             n_results=1,
             where={"domain": domain}
@@ -97,13 +106,10 @@ def get_style(domain: str) -> str:
     except Exception:
         return ""
 
-
 def get_all_styles() -> dict:
     """Get all saved styles."""
-    client  = _get_client()
-    col     = client.get_or_create_collection("lucky_style")
     try:
-        results = col.get()
+        results = _style_col.get()
         styles  = {}
         for doc, meta in zip(results["documents"], results["metadatas"]):
             domain = meta.get("domain", "unknown")
@@ -116,9 +122,7 @@ def get_all_styles() -> dict:
 # ── Work memory (past projects, generated content) ────────────────────────────
 def save_work(title: str, content: str, work_type: str = "code"):
     """Save a piece of work Lucky has done for future reference."""
-    client = _get_client()
-    col    = client.get_or_create_collection("lucky_work")
-    col.add(
+    _work_col.add(
         documents=[f"{title}\n\n{content[:2000]}"],
         ids=[str(time.time())],
         metadatas=[{
@@ -128,15 +132,12 @@ def save_work(title: str, content: str, work_type: str = "code"):
         }]
     )
 
-
 def find_similar_work(query: str, n: int = 3) -> list[str]:
     """Find past work similar to what's being asked."""
-    client = _get_client()
-    col    = client.get_or_create_collection("lucky_work")
     try:
-        results = col.query(
+        results = _work_col.query(
             query_texts=[query],
-            n_results=min(n, col.count() or 1)
+            n_results=min(n, _work_col.count() or 1)
         )
         return results["documents"][0] if results["documents"] else []
     except Exception:

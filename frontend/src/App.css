@@ -1,242 +1,496 @@
 :root {
+  --bg: #02050a;
+  --panel: rgba(8, 14, 28, 0.5);
+  --cyan: #00F5FF;
+  --blue: #0077ff;
+  --purple: #8a2be2;
+  --text: #dbeafe;
+  --border: rgba(0, 245, 255, 0.15);
+  --glow: rgba(0, 245, 255, 0.3);
+  --success: #39ff9c;
+  --radius: 24px;
   font-family: 'Inter', system-ui, sans-serif;
   color-scheme: dark;
-  margin: 0;
-  padding: 0;
-  background-color: #030712;
-  overflow: hidden;
+}
+
+/* ── 1. ADVANCED DEFAULTS & SCROLLBAR ── */
+* {
+  box-sizing: border-box;
+}
+
+::selection {
+  background: var(--cyan);
+  color: #000;
+  text-shadow: none;
+}
+
+/* Cyberpunk Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 245, 255, 0.2);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--cyan);
 }
 
 body {
   margin: 0;
-  padding: 0;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
 }
 
-/* Animated Cyber Grid Background */
-.tech-bg {
-  position: fixed;
-  inset: 0;
-  z-index: -2;
-  background-image:
-    linear-gradient(rgba(56, 189, 248, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(56, 189, 248, 0.04) 1px, transparent 1px);
-  background-size: 40px 40px;
-  background-position: center center;
-  perspective: 1000px;
+/* ── THE DEFINITIVE ROOT LOCK ── */
+#root {
+  height: 100vh;
+  width: 100vw;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
-/* Sweeping Scanner Line */
-.scanner {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.8), transparent);
-  box-shadow: 0 0 20px rgba(56, 189, 248, 0.5);
-  z-index: -1;
-  animation: scan 8s linear infinite;
-  opacity: 0.5;
+/* ── 2. VOLUMETRIC AMBIENT LIGHTING ── */
+body::before,
+body::after {
+  content: "";
+  position: absolute;
+  width: 60vw;
+  height: 60vw;
+  border-radius: 50%;
+  filter: blur(120px);
+  z-index: -5;
+  pointer-events: none;
+  animation: floatOrb 20s ease-in-out infinite alternate;
 }
 
-@keyframes scan {
+body::before {
+  background: radial-gradient(circle, rgba(0, 119, 255, 0.1) 0%, transparent 70%);
+  top: -20%;
+  left: -10%;
+}
+
+body::after {
+  background: radial-gradient(circle, rgba(0, 245, 255, 0.05) 0%, transparent 70%);
+  bottom: -20%;
+  right: -10%;
+  animation-delay: -10s;
+}
+
+@keyframes floatOrb {
   0% {
-    transform: translateY(-10vh);
+    transform: translate(0, 0) scale(1);
   }
 
   100% {
-    transform: translateY(110vh);
+    transform: translate(10%, 10%) scale(1.2);
   }
 }
 
-/* Master Layout */
-.os-layout {
-  display: flex;
-  height: 100vh;
-  width: 100vw;
-  color: #e2e8f0;
+/* ── 3. HOLOGRAPHIC CRT OVERLAY ── */
+.scanner {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  background:
+    linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%),
+    radial-gradient(circle at center, transparent 50%, rgba(0, 0, 0, 0.3) 150%);
+  background-size: 100% 4px, 100% 100%;
+  mix-blend-mode: overlay;
 }
 
-/* Integrated, Borderless Sidebar */
-.sidebar {
-  width: 320px;
-  padding: 40px 32px;
-  display: flex;
-  flex-direction: column;
-  background: linear-gradient(90deg, rgba(3, 7, 18, 0.9) 0%, rgba(3, 7, 18, 0.4) 100%);
-  backdrop-filter: blur(12px);
-  border-right: 1px solid rgba(255, 255, 255, 0.03);
+/* ── 4. FLOWING QUANTUM GRID (Mouse Tracked) ── */
+.tech-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -10;
+  background:
+    linear-gradient(rgba(0, 245, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 245, 255, 0.03) 1px, transparent 1px);
+  background-size: 50px 50px;
+  animation: gridMove 20s linear infinite;
+  perspective: 1000px;
 }
 
-.brand-header {
+.tech-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(600px circle at var(--mouse-x, 50vw) var(--mouse-y, 50vh),
+      rgba(0, 245, 255, 0.12),
+      transparent 50%);
+  filter: blur(40px);
+}
+
+@keyframes gridMove {
+  0% {
+    background-position: 0 0;
+  }
+
+  100% {
+    background-position: 50px 50px;
+  }
+}
+
+/* ── 5. GLASSMORPHISM 2.0 (Inner Bevel & Shadow) ── */
+.top-hud {
+  flex-shrink: 0;
+  /* Prevents header squishing */
+  height: 74px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 60px;
+  justify-content: space-between;
+  padding: 0 30px;
+  background: var(--panel);
+  backdrop-filter: blur(24px) saturate(150%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  z-index: 10;
 }
 
+.sidebar,
+.chat-canvas {
+  background: var(--panel);
+  backdrop-filter: blur(24px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.1),
+    inset 0 -24px 48px -24px rgba(0, 245, 255, 0.05),
+    0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+/* ── 6. CHROMATIC ABERRATION TEXT ── */
 .brand-text {
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: 2px;
-  background: linear-gradient(to right, #38bdf8, #818cf8, #c084fc);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: 6px;
+  color: #fff;
+  text-shadow:
+    -2px 0 0 rgba(0, 245, 255, 0.7),
+    2px 0 0 rgba(138, 43, 226, 0.7),
+    0 0 20px rgba(0, 245, 255, 0.5);
+  animation: hologramPulse 4s infinite alternate;
 }
 
-/* Clean List Architecture (No Boxes/Cards) */
+@keyframes hologramPulse {
+  0% {
+    filter: brightness(1);
+  }
+
+  100% {
+    filter: brightness(1.3);
+    text-shadow: -3px 0 0 rgba(0, 245, 255, 0.8), 3px 0 0 rgba(138, 43, 226, 0.8), 0 0 30px rgba(0, 245, 255, 0.8);
+  }
+}
+
+.hud-status {
+  font-size: 11px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  letter-spacing: 1px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.online {
+  background: rgba(57, 255, 156, 0.1);
+  color: var(--success);
+  box-shadow: inset 0 0 10px rgba(57, 255, 156, 0.2), 0 0 15px rgba(57, 255, 156, 0.2);
+  border: 1px solid rgba(57, 255, 156, 0.3);
+}
+
+.hud-metrics {
+  display: flex;
+  gap: 12px;
+}
+
+.metric {
+  padding: 8px 16px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  font-size: 12px;
+  font-family: monospace;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+.metric span {
+  color: var(--cyan);
+  margin-right: 6px;
+}
+
+/* ── MAIN LAYOUT (WITH SCROLL BUG FIX) ── */
+.os-layout {
+  flex: 1;
+  /* Takes exactly the remaining space */
+  display: flex;
+  padding: 20px;
+  gap: 20px;
+  overflow: hidden;
+  min-height: 0;
+  /* CRITICAL: Flexbox height lock */
+}
+
+/* ── SIDEBARS ── */
+.sidebar {
+  width: 320px;
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  border-radius: var(--radius);
+}
+
+.section-title {
+  font-size: 11px;
+  letter-spacing: 3px;
+  opacity: 0.6;
+  margin: 0 0 16px 0;
+  color: var(--cyan);
+  text-transform: uppercase;
+}
+
+/* ── 7. ADVANCED HOVER & ACTIVE STATES ── */
 .agent-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .agent-item {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 16px 8px;
+  gap: 15px;
+  height: 56px;
+  padding: 0 20px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid transparent;
+  color: #9fb6d3;
   cursor: pointer;
-  background: transparent;
-  border: none;
-  color: #94a3b8;
-  font-size: 15px;
-  font-weight: 500;
-  text-align: left;
-  transition: color 0.3s ease;
-  outline: none;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  overflow: hidden;
+}
+
+.agent-item::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(0, 245, 255, 0.1), transparent);
+  transition: 0.5s;
+}
+
+.agent-item:hover::before {
+  left: 100%;
 }
 
 .agent-item:hover {
-  color: #f8fafc;
+  transform: translateX(8px);
+  background: rgba(0, 245, 255, 0.05);
+  border-color: rgba(0, 245, 255, 0.2);
+  color: #fff;
 }
 
 .agent-item.active {
-  color: #38bdf8;
+  background: linear-gradient(90deg, rgba(0, 245, 255, 0.15), rgba(0, 119, 255, 0.05));
+  border: 1px solid rgba(0, 245, 255, 0.4);
+  color: white;
+  box-shadow: 0 0 30px rgba(0, 245, 255, 0.1);
 }
 
-/* The Glowing Active Indicator */
 .active-indicator {
   position: absolute;
-  left: -32px;
-  width: 3px;
-  height: 50%;
-  background: #38bdf8;
-  border-radius: 0 4px 4px 0;
-  box-shadow: 0 0 12px #38bdf8;
+  left: 0px;
+  width: 4px;
+  height: 100%;
+  background: var(--cyan);
+  box-shadow: 0 0 20px var(--cyan), 0 0 40px var(--cyan);
+  border-radius: 4px;
 }
 
-/* Chat Canvas */
+/* ── CHAT CANVAS (WITH SCROLL BUG FIX) ── */
 .chat-canvas {
   flex: 1;
   display: flex;
   flex-direction: column;
+  border-radius: var(--radius);
   position: relative;
+  min-height: 0;
+  /* CRITICAL FIX */
+  min-width: 0;
+  overflow: hidden;
 }
 
 .messages-container {
   flex: 1;
-  padding: 40px 60px;
   overflow-y: auto;
+  /* CRITICAL FIX: Scrolls ONLY this container */
+  overflow-x: hidden;
+  padding: 40px;
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 30px;
 }
 
-/* Integrated Message Style (Unboxed) */
 .message-row {
   display: flex;
   gap: 20px;
-  max-width: 800px;
+  max-width: 85%;
 }
 
 .message-row.user {
-  margin-left: auto;
+  align-self: flex-end;
   flex-direction: row-reverse;
 }
 
 .avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
 }
 
 .avatar.ai {
-  color: #38bdf8;
-  border-color: rgba(56, 189, 248, 0.2);
-  box-shadow: inset 0 0 10px rgba(56, 189, 248, 0.1);
+  background: rgba(0, 245, 255, 0.05);
+  border-color: rgba(0, 245, 255, 0.3);
+  box-shadow: inset 0 0 20px rgba(0, 245, 255, 0.1), 0 0 20px rgba(0, 245, 255, 0.15);
+  color: var(--cyan);
 }
 
 .message-content {
+  padding: 20px 24px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  line-height: 1.8;
   font-size: 15px;
-  line-height: 1.7;
-  padding-top: 6px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  border-top-left-radius: 4px;
 }
 
-/* Tech Input Area */
+.message-row.user .message-content {
+  background: rgba(0, 119, 255, 0.1);
+  border-color: rgba(0, 119, 255, 0.2);
+  border-top-left-radius: 20px;
+  border-top-right-radius: 4px;
+}
+
+.agent-tag {
+  font-size: 10px;
+  letter-spacing: 2px;
+  margin-bottom: 10px;
+  color: var(--cyan);
+  text-transform: uppercase;
+}
+
+/* ── 8. NEON GLOW INPUT DOCK ── */
 .input-dock {
-  padding: 32px 60px 40px;
-  background: linear-gradient(0deg, rgba(3, 7, 18, 0.9) 0%, transparent 100%);
+  padding: 30px;
 }
 
 .input-wrapper {
-  position: relative;
-  max-width: 800px;
-  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 10px 10px 24px;
+  border-radius: 30px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(0, 245, 255, 0.2);
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8), 0 0 40px rgba(0, 245, 255, 0.05);
+  transition: 0.3s;
 }
 
-.input-glow {
-  position: absolute;
-  inset: -1px;
-  background: linear-gradient(90deg, #38bdf8, #818cf8, #c084fc);
-  border-radius: 16px;
-  filter: blur(8px);
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.input-wrapper:focus-within .input-glow {
-  opacity: 0.4;
+.input-wrapper:focus-within {
+  border-color: var(--cyan);
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8), 0 0 40px rgba(0, 245, 255, 0.15);
+  transform: translateY(-2px);
 }
 
 .tech-input {
-  position: relative;
-  width: 100%;
-  background: rgba(3, 7, 18, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 20px 24px;
-  padding-right: 60px;
-  border-radius: 16px;
-  color: white;
-  font-size: 15px;
+  flex: 1;
+  background: transparent;
+  border: none;
   outline: none;
-  box-sizing: border-box;
-  backdrop-filter: blur(10px);
+  font-size: 16px;
+  color: white;
+}
+
+.tech-input::placeholder {
+  color: rgba(255, 255, 255, 0.2);
 }
 
 .send-action {
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: transparent;
+  width: 56px;
+  height: 56px;
   border: none;
-  color: #38bdf8;
-  padding: 8px;
+  border-radius: 22px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  background: linear-gradient(135deg, var(--cyan), var(--blue));
+  box-shadow: 0 0 30px rgba(0, 245, 255, 0.4), inset 0 0 10px rgba(255, 255, 255, 0.5);
+  color: black;
+  transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 .send-action:hover {
-  color: #f8fafc;
-  filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.8));
+  transform: scale(1.05);
+  box-shadow: 0 0 40px rgba(0, 245, 255, 0.6), inset 0 0 15px rgba(255, 255, 255, 0.8);
+}
+
+.send-action:active {
+  transform: scale(0.95);
+}
+
+/* ── MISC / ANIMATIONS ── */
+.task-item,
+.history-item,
+.memory-card {
+  padding: 16px;
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: 0.3s;
+  cursor: pointer;
+}
+
+.task-item:hover,
+.history-item:hover {
+  background: rgba(0, 245, 255, 0.05);
+  border-color: rgba(0, 245, 255, 0.2);
+  transform: translateX(-4px);
+}
+
+.dim {
+  opacity: 0.45;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }

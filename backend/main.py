@@ -8,7 +8,6 @@ Run this to start Lucky AI's brain.
 import sys
 from pathlib import Path
 
-# Make sure imports work from the project root
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from fastapi import FastAPI
@@ -21,7 +20,6 @@ from backend.memory.vector_db    import init_vector_db
 from backend.api.chat            import router as chat_router
 from backend.api.memory          import router as memory_router
 
-# ── App ───────────────────────────────────────────────────────────────────────
 app = FastAPI(
     title       = "Lucky AI",
     description = f"Personal AI OS for {USER_NAME} — powered by {MODEL} via {PROVIDER}",
@@ -29,21 +27,25 @@ app = FastAPI(
     docs_url    = "/docs",
 )
 
-# Allow Tauri frontend + any local requests
+# ── FIX: lock CORS to known origins instead of wildcard ──────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins     = ["*"],
+    allow_origins=[
+        "http://localhost:1420",   # Tauri dev server
+        "http://localhost:3000",   # React fallback
+        "http://127.0.0.1:1420",
+        "http://127.0.0.1:3000",
+        "tauri://localhost",       # Tauri production build
+    ],
     allow_credentials = True,
     allow_methods     = ["*"],
     allow_headers     = ["*"],
 )
 
-# ── Routers ───────────────────────────────────────────────────────────────────
 app.include_router(chat_router,   prefix="/api", tags=["Chat"])
 app.include_router(memory_router, prefix="/api", tags=["Memory"])
 
 
-# ── Startup ───────────────────────────────────────────────────────────────────
 @app.on_event("startup")
 async def startup():
     print("\n" + "="*50)
@@ -54,14 +56,11 @@ async def startup():
     print(f"  Model:    {MODEL}")
     print(f"  Docs:     http://localhost:8000/docs")
     print("="*50 + "\n")
-
-    # Init databases
     init_db()
     init_vector_db()
     print("[Lucky AI] All systems ready. Let's go! 🚀\n")
 
 
-# ── Health check ──────────────────────────────────────────────────────────────
 @app.get("/health")
 async def health():
     return {
