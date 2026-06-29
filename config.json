@@ -66,6 +66,18 @@
     "whisper_model": "base",
     "tts_voice": "en_US-lessac-medium"
   },
+  "execution": {
+    "workspace_root": "./workspace",
+    "command_allowlist": [
+      "git status",
+      "git diff",
+      "git log",
+      "git branch",
+      "npm install",
+      "npm run dev",
+      "pip install"
+    ]
+  },
   "server": {
     "host": "0.0.0.0",
     "port": 8000,

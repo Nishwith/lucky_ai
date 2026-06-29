@@ -21,6 +21,13 @@ Verifies:
 import asyncio
 import time
 import httpx
+import sys
+
+if sys.platform.startswith("win"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
 
 BASE = "http://localhost:8000"
 
@@ -227,6 +234,104 @@ async def test_lucky():
         else:
 
             print("❌ Memory Recall Failed")
+
+        # ------------------------------------------------------------------
+        # Test 8 : Tool List
+        # ------------------------------------------------------------------
+        print("\n[8] Tools Catalog")
+        start = time.perf_counter()
+        r = await client.get(f"{BASE}/api/tools")
+        elapsed = (time.perf_counter() - start) * 1000
+        if r.status_code == 200:
+            tools = r.json().get("tools", [])
+            print(f"✅ Tools catalog loaded: found {len(tools)} registered tools")
+            for t in tools[:5]:
+                print(f"   - {t['name']}: {t['description']} (Level: {t['permission_level']})")
+        else:
+            print("❌ Tools catalog load failed")
+
+        # ------------------------------------------------------------------
+        # Test 9 : Tool Execution (Auto Permission)
+        # ------------------------------------------------------------------
+        print("\n[9] Tool Execution (list_files - AUTO level)")
+        start = time.perf_counter()
+        r = await client.post(
+            f"{BASE}/api/tools/list_files",
+            json={"path": "."}
+        )
+        elapsed = (time.perf_counter() - start) * 1000
+        if r.status_code == 200:
+            res = r.json()
+            if res.get("success"):
+                print("✅ Tool execution success")
+                print(f"   Output files count: {len(res.get('output', []))}")
+            else:
+                print(f"❌ Tool execution failed: {res.get('error')}")
+        else:
+            print("❌ Tool endpoint failed")
+
+        # ------------------------------------------------------------------
+        # Test 10 : Gated Tool Execution (Interactive Prompt)
+        # ------------------------------------------------------------------
+        print("\n[10] Gated Tool Execution (create_file - CONFIRM level)")
+        
+        filename = "test_scaffold_output.txt"
+        exec_task = asyncio.create_task(client.post(
+            f"{BASE}/api/tools/create_file",
+            json={"path": filename, "content": "Scaffold content created by integration test!"}
+        ))
+        
+        await asyncio.sleep(1)
+        
+        r = await client.get(f"{BASE}/api/permissions/pending")
+        if r.status_code == 200:
+            pending = r.json().get("pending", [])
+            if pending:
+                req = pending[0]
+                print(f"   Intercepted pending request {req['request_id']} for tool '{req['tool_name']}'")
+                
+                r_approve = await client.post(
+                    f"{BASE}/api/permissions/respond/{req['request_id']}",
+                    json={"approved": True}
+                )
+                if r_approve.status_code == 200:
+                    print("✅ Sent positive permission response")
+                else:
+                    print("❌ Failed to send permission response")
+            else:
+                print("❌ No pending permission requests found")
+        else:
+            print("❌ Failed to check pending permissions")
+            
+        exec_res = await exec_task
+        if exec_res.status_code == 200:
+            res = exec_res.json()
+            if res.get("success"):
+                print(f"✅ Gated execution successfully completed: {res.get('output')}")
+                
+                # Cleanup: Delete the created test file (requires permission prompt too!)
+                print("   [Cleanup] Deleting test file (CONFIRM level)...")
+                del_task = asyncio.create_task(client.post(
+                    f"{BASE}/api/tools/delete_file",
+                    json={"path": filename}
+                ))
+                await asyncio.sleep(1)
+                
+                # Query and approve delete permission
+                r = await client.get(f"{BASE}/api/permissions/pending")
+                pending = r.json().get("pending", [])
+                if pending:
+                    req = pending[0]
+                    await client.post(
+                        f"{BASE}/api/permissions/respond/{req['request_id']}",
+                        json={"approved": True}
+                    )
+                await del_task
+                print("✅ Cleanup complete.")
+            else:
+                print(f"❌ Gated execution returned error: {res.get('error')}")
+        else:
+            print(f"❌ Gated execution request failed: {exec_res.status_code}")
 
     divider()
 

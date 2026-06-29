@@ -8,6 +8,7 @@ This is Lucky's factual, structured memory.
 import sqlite3
 import datetime
 from pathlib import Path
+from typing import Optional
 from ..brain.config_loader import DB_PATH
 
 
@@ -85,6 +86,13 @@ def init_db():
         approved   INTEGER DEFAULT 0,
         category   TEXT DEFAULT 'general',
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )""")
+
+    # ── Permission Rules ─────────────────────────────────────────────────────
+    c.execute("""CREATE TABLE IF NOT EXISTS permission_rules (
+        tool_name  TEXT PRIMARY KEY,
+        rule       TEXT NOT NULL,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     )""")
 
     conn.commit()
@@ -262,3 +270,21 @@ def build_memory_context() -> str:
         parts.append(f"Pending tasks:\n{task_str}")
 
     return "\n\n".join(parts) if parts else ""
+
+
+# ── Permission Rules Helpers ──────────────────────────────────────────────────
+def get_permission_rule(tool_name: str) -> Optional[str]:
+    conn = get_conn()
+    row = conn.execute("SELECT rule FROM permission_rules WHERE tool_name = ?", (tool_name,)).fetchone()
+    conn.close()
+    return row["rule"] if row else None
+
+
+def set_permission_rule(tool_name: str, rule: str):
+    conn = get_conn()
+    conn.execute(
+        "INSERT OR REPLACE INTO permission_rules (tool_name, rule, updated_at) VALUES (?, ?, ?)",
+        (tool_name, rule, datetime.datetime.now().isoformat())
+    )
+    conn.commit()
+    conn.close()

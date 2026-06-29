@@ -77,7 +77,9 @@ def __getattr__(name: str) -> Any:
         "MAX_HIST": lambda: _manager.get("memory.max_history"),
         "HOST": lambda: _manager.get("server.host"),
         "PORT": lambda: _manager.get("server.port"),
-        "CONTEXT_WINDOW": lambda: _manager.get("context_window", 2048)
+        "CONTEXT_WINDOW": lambda: _manager.get("context_window", 2048),
+        "WORKSPACE_ROOT": lambda: ROOT / _manager.get("execution.workspace_root", "./workspace"),
+        "COMMAND_ALLOWLIST": lambda: _manager.get("execution.command_allowlist", [])
     }
     
     if name in mappings:

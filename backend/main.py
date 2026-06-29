@@ -21,6 +21,8 @@ from backend.memory.vector_db    import init_vector_db
 from backend.api.chat            import router as chat_router
 from backend.api.memory          import router as memory_router
 from backend.api.system          import router as system_router
+from backend.api.execution       import router as execution_router
+import backend.tools  # Triggers decorator tool registrations
 
 from backend.core.logger import setup_logging, logger
 from backend.core.startup import run_startup_validation, STARTUP_REPORT
@@ -84,6 +86,7 @@ app.add_middleware(
 app.include_router(chat_router,   prefix="/api", tags=["Chat"])
 app.include_router(memory_router, prefix="/api", tags=["Memory"])
 app.include_router(system_router, prefix="/api", tags=["System"])
+app.include_router(execution_router, prefix="/api", tags=["Execution"])
 
 
 @app.get("/")
