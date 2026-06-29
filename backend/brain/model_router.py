@@ -6,13 +6,14 @@ User never sees this — it just works automatically.
 """
 
 import re
+from typing import List, Tuple
+from pydantic import BaseModel
 from .config_loader import PROVIDER
+from backend.core.logger import logger
 
 # ── Specialist models (only used when PROVIDER is ollama) ─────────────────────
 SPECIALIST = {
     "coding":  "ollama/qwen2.5-coder:7b",
-    # "ai_dev":  "ollama/deepseek-r1:7b",
-    # "vision":  "ollama/gemma4:e4b",
     "default": f"ollama/qwen3:8b",
 }
 
@@ -25,57 +26,105 @@ ROUTING_RULES = {
         "frontend", "database", "sql", "docker", "deploy", "git", "npm",
         "pip", "install", "import", "async", "refactor", "test", "unittest"
     ],
-    # "ai_dev": [
-    #     "pytorch", "tensorflow", "huggingface", "transformers", "fine-tune",
-    #     "finetune", "train", "model", "dataset", "embedding", "vector",
-    #     "langchain", "langgraph", "crewai", "autogen", "rag", "agent",
-    #     "inference", "onnx", "lora", "qlora", "loss function", "epoch",
-    #     "neural", "ai model", "ml model", "machine learning"
-    # ],
-    # "vision": [
-    #     "screen", "look at", "see my", "what's on", "image", "screenshot",
-    #     "ui design", "visual", "design review", "what do you see"
-    # ],
 }
 
+# Define keywords for other agents
+CONTENT_KEYWORDS = ["script", "youtube", "caption", "hook", "blog", "article",
+                    "seo", "keyword", "thumbnail", "content", "post", "write"]
 
-def detect_agent(message: str) -> str:
+PA_KEYWORDS = ["project", "deadline", "task", "remind", "briefing", "plan my",
+               "what do i have", "schedule", "overdue", "this week"]
+
+STUDY_KEYWORDS = ["explain", "summarise", "summarize", "notes", "revision",
+                  "what is", "how does", "study", "learn", "understand", "concept"]
+
+BIZ_KEYWORDS = ["email", "proposal", "client", "cold", "outreach", "pitch",
+                "invoice", "contract", "business", "sales"]
+
+
+class RoutingDecision(BaseModel):
+    agent: str
+    model: str
+    matched_keywords: List[str]
+    reasoning: str
+    alternatives: List[str]
+
+
+def detect_agent_with_details(message: str) -> Tuple[str, List[str], str, List[str]]:
     """
-    Detect which agent should handle this message.
-    Returns: 'coding' | 'ai_dev' | 'vision' | 'content' | 'pa' | 'study' | 'business' | 'brain'
+    Analyzes message keywords and returns:
+    (selected_agent, matched_keywords, reasoning, alternative_agents)
     """
     msg = message.lower()
+    
+    # Collect all agent matches
+    matches = {}
+    
+    # Check Content
+    content_matches = [k for k in CONTENT_KEYWORDS if k in msg]
+    if content_matches:
+        # Respect logic: and not any(k in msg for k in ["code", "build"])
+        if not any(k in msg for k in ["code", "build"]):
+            matches["content"] = content_matches
+            
+    # Check PA
+    pa_matches = [k for k in PA_KEYWORDS if k in msg]
+    if pa_matches:
+        matches["pa"] = pa_matches
+        
+    # Check Study
+    study_matches = [k for k in STUDY_KEYWORDS if k in msg]
+    if study_matches:
+        matches["study"] = study_matches
+        
+    # Check Business
+    biz_matches = [k for k in BIZ_KEYWORDS if k in msg]
+    if biz_matches:
+        matches["business"] = biz_matches
+        
+    # Check Coding
+    coding_matches = [k for k in ROUTING_RULES["coding"] if k in msg]
+    if coding_matches:
+        matches["coding"] = coding_matches
 
-    # Content agent
-    content_kw = ["script", "youtube", "caption", "hook", "blog", "article",
-                  "seo", "keyword", "thumbnail", "content", "post", "write"]
-    if any(k in msg for k in content_kw) and not any(k in msg for k in ["code", "build"]):
-        return "content"
+    # Replicate exact fallback order of detect_agent()
+    selected_agent = "brain"
+    matched_keywords = []
+    reasoning = "Default system brain selected (no matching keywords found)"
+    alternatives = []
 
-    # PA agent
-    pa_kw = ["project", "deadline", "task", "remind", "briefing", "plan my",
-             "what do i have", "schedule", "overdue", "this week"]
-    if any(k in msg for k in pa_kw):
-        return "pa"
+    # Priority order matching detect_agent():
+    # 1. Content (if matched and no code/build)
+    # 2. PA
+    # 3. Study
+    # 4. Business
+    # 5. Coding
+    
+    if "content" in matches:
+        selected_agent = "content"
+        matched_keywords = matches["content"]
+        reasoning = f"Matched content keywords: {matched_keywords}"
+    elif "pa" in matches:
+        selected_agent = "pa"
+        matched_keywords = matches["pa"]
+        reasoning = f"Matched PA keywords: {matched_keywords}"
+    elif "study" in matches:
+        selected_agent = "study"
+        matched_keywords = matches["study"]
+        reasoning = f"Matched study keywords: {matched_keywords}"
+    elif "business" in matches:
+        selected_agent = "business"
+        matched_keywords = matches["business"]
+        reasoning = f"Matched business keywords: {matched_keywords}"
+    elif "coding" in matches:
+        selected_agent = "coding"
+        matched_keywords = matches["coding"]
+        reasoning = f"Matched coding keywords: {matched_keywords}"
 
-    # Study agent
-    study_kw = ["explain", "summarise", "summarize", "notes", "revision",
-                "what is", "how does", "study", "learn", "understand", "concept"]
-    if any(k in msg for k in study_kw):
-        return "study"
+    # Compile alternatives (other agents that had keyword matches)
+    alternatives = [a for a in matches.keys() if a != selected_agent]
 
-    # Business agent
-    biz_kw = ["email", "proposal", "client", "cold", "outreach", "pitch",
-              "invoice", "contract", "business", "sales"]
-    if any(k in msg for k in biz_kw):
-        return "business"
-
-    # Coding or AI dev
-    for agent, keywords in ROUTING_RULES.items():
-        if any(k in msg for k in keywords):
-            return agent
-
-    return "brain"  # Default — main Qwen3 brain
+    return selected_agent, matched_keywords, reasoning, alternatives
 
 
 def get_model_for_agent(agent: str) -> str:
@@ -84,20 +133,28 @@ def get_model_for_agent(agent: str) -> str:
     If using cloud providers, always uses the configured model (no local specialists).
     """
     if PROVIDER != "ollama":
-        # Cloud providers: use configured model for everything
-        # They're powerful enough (GPT-4o, Claude, Llama 70B via Groq etc.)
         from .config_loader import MODEL, PROVIDER as P
         return f"{P}/{MODEL}" if P not in ("openai", "anthropic") else MODEL
 
-    # Local Ollama: route to specialist models
     return SPECIALIST.get(agent, SPECIALIST["default"])
 
 
-def route(message: str) -> tuple[str, str]:
+def route(message: str) -> RoutingDecision:
     """
-    Main routing function.
-    Returns: (agent_name, model_to_use)
+    Main routing function returning detailed RoutingDecision.
     """
-    agent = detect_agent(message)
+    agent, matched_keywords, reasoning, alternatives = detect_agent_with_details(message)
     model = get_model_for_agent(agent)
-    return agent, model
+    
+    decision = RoutingDecision(
+        agent=agent,
+        model=model,
+        matched_keywords=matched_keywords,
+        reasoning=reasoning,
+        alternatives=alternatives
+    )
+    
+    # Log Routing Decision using structured logging format
+    logger.info(f"Routing Decision: agent={decision.agent}, model={decision.model}, reasoning='{decision.reasoning}', alternatives={decision.alternatives}")
+    
+    return decision

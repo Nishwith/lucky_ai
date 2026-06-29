@@ -1,0 +1,141 @@
+.chat-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.msg-panel {
+  position: relative;
+  padding: 20px;
+  border-radius: 6px;
+  background: rgba(8, 14, 28, 0.55);
+  border: 1px solid rgba(0, 245, 255, 0.1);
+  backdrop-filter: blur(12px);
+  max-width: 80%;
+  align-self: flex-start;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+}
+
+.msg-panel.user {
+  align-self: flex-end;
+  background: rgba(0, 119, 255, 0.08);
+  border-color: rgba(0, 119, 255, 0.25);
+  box-shadow: 0 10px 40px rgba(0, 119, 255, 0.05);
+}
+
+.msg-agent-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-family: 'Share Tech Mono', monospace;
+  border: 1px solid currentColor;
+  padding: 2px 8px;
+  border-radius: 2px;
+  margin-bottom: 12px;
+  letter-spacing: 1px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.msg-user-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-family: 'Share Tech Mono', monospace;
+  color: #0077ff;
+  border: 1px solid rgba(0, 119, 255, 0.4);
+  padding: 2px 8px;
+  border-radius: 2px;
+  margin-bottom: 12px;
+  letter-spacing: 1px;
+  background: rgba(0, 119, 255, 0.04);
+}
+
+.msg-body {
+  font-size: 14.5px;
+  line-height: 1.65;
+  color: #e2e8f0;
+}
+
+.msg-corners i {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-color: var(--hud-cyan);
+  border-style: solid;
+  opacity: 0.65;
+  pointer-events: none;
+}
+
+.msg-panel.user .msg-corners i {
+  border-color: #0077ff;
+}
+
+.msg-corners i:nth-child(1) { top: -1px; left: -1px; border-width: 1.5px 0 0 1.5px; }
+.msg-corners i:nth-child(2) { top: -1px; right: -1px; border-width: 1.5px 1.5px 0 0; }
+.msg-corners i:nth-child(3) { bottom: -1px; left: -1px; border-width: 0 0 1.5px 1.5px; }
+.msg-corners i:nth-child(4) { bottom: -1px; right: -1px; border-width: 0 1.5px 1.5px 0; }
+
+.code-block {
+  margin-top: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 5px;
+  overflow: hidden;
+  background: #04080e;
+  font-family: 'Share Tech Mono', monospace;
+}
+
+.code-lang {
+  background: rgba(255, 255, 255, 0.02);
+  padding: 5px 14px;
+  font-size: 11px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.code-content {
+  margin: 0;
+  padding: 14px;
+  overflow-x: auto;
+  font-size: 13.5px;
+  color: #a5f3fc;
+  line-height: 1.5;
+}
+
+.thinking-dots {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  height: 12px;
+}
+
+.thinking-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--hud-cyan);
+  animation: thinkingDot 1.4s infinite ease-in-out both;
+}
+
+.thinking-dots span:nth-child(1) { animation-delay: -0.32s; }
+.thinking-dots span:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes thinkingDot {
+  0%, 80%, 100% { transform: scale(0); opacity: 0.3; }
+  40% { transform: scale(1); opacity: 1; }
+}
+
+.cursor-blink {
+  animation: cursorBlink 0.9s steps(2, start) infinite;
+  color: var(--hud-cyan);
+  margin-left: 2px;
+}
+
+@keyframes cursorBlink {
+  to { visibility: hidden; }
+}

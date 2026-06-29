@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "frontend",
+  "productName": "lucky-ai",
   "version": "0.1.0",
   "identifier": "com.luckyai.dev",
   "build": {
@@ -12,9 +12,9 @@
   "app": {
     "windows": [
       {
-        "title": "frontend",
-        "width": 800,
-        "height": 600
+        "title": "Lucky AI",
+        "width": 1400,
+        "height": 900
       }
     ],
     "security": {

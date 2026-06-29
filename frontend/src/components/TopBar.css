@@ -1,0 +1,102 @@
+.hud-topbar {
+  flex-shrink: 0;
+  height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  background: rgba(8, 14, 28, 0.65);
+  backdrop-filter: blur(20px) saturate(140%);
+  border-bottom: 1px solid var(--border-alpha);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
+  z-index: 10;
+  position: relative;
+}
+
+.hud-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: 3px;
+  color: #ffffff;
+  text-shadow: 0 0 15px rgba(0, 245, 255, 0.3);
+}
+
+.logo-mark {
+  color: var(--hud-cyan);
+  animation: pulse 4s infinite alternate;
+}
+
+.logo-text {
+  font-weight: 800;
+}
+
+.logo-ai {
+  color: var(--hud-cyan);
+}
+
+.hud-status-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.status-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-family: 'Share Tech Mono', monospace;
+  padding: 4px 12px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  letter-spacing: 1px;
+}
+
+.status-pill.online {
+  background: rgba(0, 255, 136, 0.08);
+  border-color: rgba(0, 255, 136, 0.25);
+  color: var(--hud-green);
+  box-shadow: 0 0 10px rgba(0, 255, 136, 0.05);
+}
+
+.status-pill.thinking {
+  background: rgba(0, 245, 255, 0.08);
+  border-color: rgba(0, 245, 255, 0.25);
+  color: var(--hud-cyan);
+  box-shadow: 0 0 10px rgba(0, 245, 255, 0.05);
+}
+
+.status-pill.error {
+  background: rgba(255, 107, 107, 0.08);
+  border-color: rgba(255, 107, 107, 0.25);
+  color: var(--hud-red);
+  box-shadow: 0 0 10px rgba(255, 107, 107, 0.05);
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: currentColor;
+  box-shadow: 0 0 8px currentColor;
+}
+
+.hud-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-family: 'Share Tech Mono', monospace;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.hud-meta svg {
+  opacity: 0.7;
+}
+
+.hud-clock {
+  color: var(--hud-cyan);
+}

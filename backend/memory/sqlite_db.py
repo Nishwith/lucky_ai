@@ -89,7 +89,8 @@ def init_db():
 
     conn.commit()
     conn.close()
-    print("[Lucky AI Memory] SQLite initialized ✓")
+    from backend.core.logger import logger
+    logger.info("SQLite initialized successfully.")
 
 
 # ── Personal Info ─────────────────────────────────────────────────────────────

@@ -26,7 +26,8 @@ _style_col  = _client.get_or_create_collection("lucky_style")
 _work_col   = _client.get_or_create_collection("lucky_work")
 
 def init_vector_db():
-    print("[Lucky AI Memory] ChromaDB initialized ✓")
+    from backend.core.logger import logger
+    logger.info("ChromaDB initialized successfully.")
 
 
 # ── Core memory operations ─────────────────────────────────────────────────────

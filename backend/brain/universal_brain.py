@@ -11,48 +11,12 @@ To switch provider: change config.json. Zero code changes.
 import litellm
 import logging
 from typing import AsyncGenerator
-from .config_loader import PROVIDER, MODEL, API_BASE, API_KEY
 
 # Suppress litellm noise
 litellm.suppress_debug_info = True
 logging.getLogger("LiteLLM").setLevel(logging.WARNING)
 
-# ── Build the model string LiteLLM expects ────────────────────────────────────
-def _build_model_string() -> str:
-    """
-    LiteLLM uses different prefixes per provider:
-    ollama/qwen3:8b | groq/llama-3.3-70b | gpt-4o-mini | claude-... | gemini/...
-    """
-    if PROVIDER == "ollama":
-        return f"ollama/{MODEL}"
-    if PROVIDER == "openai":
-        return MODEL                        # OpenAI needs no prefix
-    if PROVIDER == "anthropic":
-        return MODEL                        # Anthropic needs no prefix
-    if PROVIDER in ("groq", "deepseek", "openrouter", "gemini"):
-        return f"{PROVIDER}/{MODEL}"
-    return MODEL                            # Fallback — pass as-is
 
-
-MODEL_STRING = _build_model_string()
-
-
-# ── Extra kwargs per provider ─────────────────────────────────────────────────
-def _provider_kwargs() -> dict:
-    kwargs = {}
-    if API_KEY:
-        kwargs["api_key"] = API_KEY
-    if API_BASE and PROVIDER == "ollama":
-        kwargs["api_base"] = API_BASE
-    if PROVIDER == "openrouter":
-        kwargs["api_base"] = "https://openrouter.ai/api/v1"
-    return kwargs
-
-
-EXTRA_KW = _provider_kwargs()
-
-
-# ── Universal Brain ───────────────────────────────────────────────────────────
 class UniversalBrain:
     """
     Single interface for all AI providers.
@@ -60,9 +24,31 @@ class UniversalBrain:
     """
 
     def __init__(self):
-        self.model  = MODEL_STRING
-        self.kwargs = EXTRA_KW
-        print(f"[Lucky AI Brain] Provider: {PROVIDER} | Model: {MODEL}")
+        # UniversalBrain uses dynamic properties to fetch current model/kwargs
+        pass
+
+    @property
+    def model(self) -> str:
+        from . import config_loader as cl
+        if cl.PROVIDER == "ollama":
+            return f"ollama/{cl.MODEL}"
+        if cl.PROVIDER in ("openai", "anthropic"):
+            return cl.MODEL
+        if cl.PROVIDER in ("groq", "deepseek", "openrouter", "gemini"):
+            return f"{cl.PROVIDER}/{cl.MODEL}"
+        return cl.MODEL
+
+    @property
+    def kwargs(self) -> dict:
+        from . import config_loader as cl
+        kwargs = {}
+        if cl.API_KEY:
+            kwargs["api_key"] = cl.API_KEY
+        if cl.API_BASE and cl.PROVIDER == "ollama":
+            kwargs["api_base"] = cl.API_BASE
+        if cl.PROVIDER == "openrouter":
+            kwargs["api_base"] = "https://openrouter.ai/api/v1"
+        return kwargs
 
     # ── Normal (non-streaming) ────────────────────────────────────────────────
     async def think(

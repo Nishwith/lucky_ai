@@ -28,7 +28,7 @@ aiofiles==24.1.0
 
 # PC Control (optional — uncomment when ready)
 # pyautogui
-# psutil
+psutil
 # pygetwindow
 # pywin32
 

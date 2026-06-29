@@ -52,8 +52,9 @@ def get_system_for_agent(agent: str, memory_ctx: str) -> str:
         "study":    study_agent_system,
         "business": business_agent_system,
     }
-    fn = mapping.get(agent, build_system_prompt)
-    return fn(memory=memory_ctx) if agent in mapping else fn(memory_context=memory_ctx)
+    if agent in mapping:
+        return mapping[agent](memory=memory_ctx)
+    return build_system_prompt(memory_context=memory_ctx)
 
 
 # ── Streaming chat ─────────────────────────────────────────────────────────────
@@ -66,7 +67,12 @@ async def chat_stream(req: ChatRequest):
     session_id = req.session_id or str(uuid.uuid4())
 
     # 1. Route to best agent + model
-    agent, model = route(req.message)
+    decision = route(req.message)
+    agent = decision.agent
+    model = decision.model
+
+    from backend.core.state import system_state, SystemState
+    system_state.transition_to(SystemState.THINKING, f"Received stream request for agent {agent}")
 
     # 2. Build memory context
     sql_ctx      = build_memory_context()
@@ -84,28 +90,32 @@ async def chat_stream(req: ChatRequest):
 
     # 6. Stream response
     async def generate():
-        full_response = []
-        yield f"data: {{\"agent\": \"{agent}\", \"model\": \"{model}\", \"session_id\": \"{session_id}\"}}\n\n"
+        try:
+            full_response = []
+            yield f"data: {{\"agent\": \"{agent}\", \"model\": \"{model}\", \"session_id\": \"{session_id}\"}}\n\n"
 
-        async for token in brain.think_stream(
-            prompt=req.message,
-            system=system,
-            history=history,
-        ):
-            full_response.append(token)
-            yield f"data: {token}\n\n"
+            async for token in brain.think_stream(
+                prompt=req.message,
+                system=system,
+                history=history,
+            ):
+                full_response.append(token)
+                yield f"data: {token}\n\n"
 
-        # Save complete response
-        complete = "".join(full_response)
-        save_message(session_id, "assistant", complete, agent)
+            # Save complete response
+            complete = "".join(full_response)
+            save_message(session_id, "assistant", complete, agent)
 
-        # Store in semantic memory
-        remember(
-            f"User asked: {req.message[:200]} | Lucky replied: {complete[:300]}",
-            category=agent
-        )
+            # Propose to memory log only if semantically dense (>= 40 chars)
+            if len(req.message) >= 40:
+                propose_memory(
+                    f"User asked: {req.message[:200]} | Lucky replied: {complete[:300]}",
+                    category=agent
+                )
 
-        yield "data: [DONE]\n\n"
+            yield "data: [DONE]\n\n"
+        finally:
+            system_state.transition_to(SystemState.READY, "Stream response finished")
 
     return StreamingResponse(generate(), media_type="text/event-stream")
 
@@ -120,7 +130,13 @@ async def chat(req: ChatRequest):
     session_id = req.session_id or str(uuid.uuid4())
 
     # Route + build context
-    agent, model = route(req.message)
+    decision = route(req.message)
+    agent = decision.agent
+    model = decision.model
+    
+    from backend.core.state import system_state, SystemState
+    system_state.transition_to(SystemState.THINKING, f"Received non-stream request for agent {agent}")
+    
     sql_ctx      = build_memory_context()
     semantic_ctx = build_semantic_context(req.message)
     memory_ctx   = "\n\n".join(filter(None, [sql_ctx, semantic_ctx]))
@@ -131,19 +147,23 @@ async def chat(req: ChatRequest):
     save_message(session_id, "user", req.message, agent)
 
     # Get response
-    reply = await brain.think_with(
-        model=model,
-        prompt=req.message,
-        system=system,
-        history=history,
-    )
+    try:
+        reply = await brain.think_with(
+            model=model,
+            prompt=req.message,
+            system=system,
+            history=history,
+        )
+    finally:
+        system_state.transition_to(SystemState.READY, "Non-stream response finished")
 
     # Save + store in memory
     save_message(session_id, "assistant", reply, agent)
-    remember(
-        f"User asked: {req.message[:200]} | Lucky replied: {reply[:300]}",
-        category=agent
-    )
+    if len(req.message) >= 40:
+        propose_memory(
+            f"User asked: {req.message[:200]} | Lucky replied: {reply[:300]}",
+            category=agent
+        )
 
     return ChatResponse(
         reply=reply,
