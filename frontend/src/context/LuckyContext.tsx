@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { Message, Agent, SystemState, SystemMetrics, SystemStatus } from "../types";
+import { Message, Agent, SystemState, SystemMetrics, SystemStatus, PermissionRequest } from "../types";
 import { Cpu, Terminal, Sparkles, Briefcase, BookOpen } from "lucide-react";
 
 export const AGENTS: Agent[] = [
@@ -40,6 +40,8 @@ interface LuckyContextType {
   activeProvider: string;
   setActiveProvider: (provider: string) => void;
   refreshSystemStatus: () => Promise<void>;
+  pendingPermissions: PermissionRequest[];
+  respondToPermission: (requestId: string, approved: boolean, rememberRule?: 'allow' | 'deny' | null) => Promise<void>;
 }
 
 const LuckyContext = createContext<LuckyContextType | undefined>(undefined);
@@ -69,9 +71,58 @@ export const LuckyProvider = ({ children }: { children: ReactNode }) => {
       setStatus("error");
     }
   };
+  const [pendingPermissions, setPendingPermissions] = useState<PermissionRequest[]>([]);
+
+  const pollPermissions = async () => {
+    try {
+      const r = await fetch("http://localhost:8000/api/permissions/pending");
+      if (r.ok) {
+        const data = await r.json();
+        setPendingPermissions(data.pending || []);
+        if (data.system_state) {
+          setSystemState(data.system_state);
+        }
+        if (data.status) {
+          setStatus(data.status);
+        }
+        if (data.model) {
+          setActiveModel(data.model);
+        }
+        if (data.provider) {
+          setActiveProvider(data.provider);
+        }
+      }
+    } catch (e) {
+      console.error("Error polling permissions:", e);
+    }
+  };
+
+  const respondToPermission = async (requestId: string, approved: boolean, rememberRule?: 'allow' | 'deny' | null) => {
+    try {
+      const r = await fetch(`http://localhost:8000/api/permissions/respond/${requestId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          approved,
+          remember_rule: rememberRule || null
+        })
+      });
+      if (r.ok) {
+        setPendingPermissions(prev => prev.filter(p => p.request_id !== requestId));
+      } else {
+        console.error("Failed to respond to permission:", await r.text());
+      }
+    } catch (e) {
+      console.error("Error responding to permission:", e);
+    }
+  };
 
   useEffect(() => {
     refreshSystemStatus();
+    const timer = setInterval(pollPermissions, 800);
+    return () => clearInterval(timer);
   }, []);
 
   return (
@@ -95,6 +146,8 @@ export const LuckyProvider = ({ children }: { children: ReactNode }) => {
         activeProvider,
         setActiveProvider,
         refreshSystemStatus,
+        pendingPermissions,
+        respondToPermission,
       }}
     >
       {children}

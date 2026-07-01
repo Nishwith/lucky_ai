@@ -25,6 +25,27 @@ _memory_col = _client.get_or_create_collection("lucky_memory")
 _style_col  = _client.get_or_create_collection("lucky_style")
 _work_col   = _client.get_or_create_collection("lucky_work")
 
+_memory_count = None
+_work_count = None
+
+def get_memory_count() -> int:
+    global _memory_count
+    if _memory_count is None:
+        try:
+            _memory_count = _memory_col.count()
+        except Exception:
+            _memory_count = 0
+    return _memory_count
+
+def get_work_count() -> int:
+    global _work_count
+    if _work_count is None:
+        try:
+            _work_count = _work_col.count()
+        except Exception:
+            _work_count = 0
+    return _work_count
+
 def init_vector_db():
     from backend.core.logger import logger
     logger.info("ChromaDB initialized successfully.")
@@ -43,16 +64,23 @@ def remember(text: str, category: str = "general", metadata: dict = None):
             **(metadata or {})
         }]
     )
+    global _memory_count
+    if _memory_count is not None:
+        _memory_count += 1
 
 def recall(query: str, n: int = 5, category: str = None) -> list[str]:
     """Find the most relevant memories, filtered by relevance score."""
     try:
+        cnt = get_memory_count()
+        if cnt == 0:
+            return []
+            
         where = {"category": category} if category else None
         
         # We must explicitly ask for 'distances' to measure relevance
         results = _memory_col.query(
             query_texts=[query],
-            n_results=min(n, _memory_col.count() or 1),
+            n_results=min(n, cnt),
             where=where,
             include=["documents", "distances"] 
         )
@@ -132,13 +160,20 @@ def save_work(title: str, content: str, work_type: str = "code"):
             "timestamp": datetime.datetime.now().isoformat()
         }]
     )
+    global _work_count
+    if _work_count is not None:
+        _work_count += 1
 
 def find_similar_work(query: str, n: int = 3) -> list[str]:
     """Find past work similar to what's being asked."""
     try:
+        cnt = get_work_count()
+        if cnt == 0:
+            return []
+            
         results = _work_col.query(
             query_texts=[query],
-            n_results=min(n, _work_col.count() or 1)
+            n_results=min(n, cnt)
         )
         return results["documents"][0] if results["documents"] else []
     except Exception:

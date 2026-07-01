@@ -40,6 +40,7 @@ export const InputDock = () => {
           message: userText,
           session_id: sessionId,
           stream: true,
+          force_agent: activeAgent.key,
         }),
       });
 
@@ -106,6 +107,7 @@ export const InputDock = () => {
             message: userText,
             session_id: sessionId,
             stream: false,
+            force_agent: activeAgent.key,
           }),
         });
         const data = await res.json();

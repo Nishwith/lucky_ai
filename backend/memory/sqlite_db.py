@@ -12,11 +12,42 @@ from typing import Optional
 from ..brain.config_loader import DB_PATH
 
 
+import threading
+
+_local_conn = threading.local()
+
+class ConnectionWrapper:
+    def __init__(self, conn):
+        self.__dict__["_conn"] = conn
+    def __getattr__(self, name):
+        return getattr(self._conn, name)
+    def __setattr__(self, name, value):
+        setattr(self._conn, name, value)
+    def __enter__(self):
+        return self._conn.__enter__()
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        return self._conn.__exit__(exc_type, exc_val, exc_tb)
+    def close(self):
+        # NO-OP: Keep persistent thread connection open
+        pass
+
 def get_conn() -> sqlite3.Connection:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(DB_PATH))
-    conn.row_factory = sqlite3.Row
-    return conn
+    conn = getattr(_local_conn, "conn", None)
+    if conn is None:
+        # Open persistent connection
+        conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+        # Enable write-ahead logging (WAL) and performance pragmas
+        try:
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.execute("PRAGMA synchronous=NORMAL")
+            conn.execute("PRAGMA cache_size=-2000")  # 2MB cache size
+            conn.execute("PRAGMA temp_store=MEMORY")
+        except Exception:
+            pass
+        _local_conn.conn = conn
+    return ConnectionWrapper(conn)
 
 
 def init_db():

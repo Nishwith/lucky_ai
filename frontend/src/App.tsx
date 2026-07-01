@@ -3,6 +3,7 @@ import { TopBar } from "./components/TopBar";
 import { Sidebar } from "./components/Sidebar";
 import { ChatPanel } from "./components/ChatPanel";
 import { InputDock } from "./components/InputDock";
+import { PermissionModal } from "./components/PermissionModal";
 import "./App.css";
 
 function AppContent() {
@@ -26,6 +27,9 @@ function AppContent() {
           <InputDock />
         </main>
       </div>
+
+      {/* OS Permission Modal */}
+      <PermissionModal />
     </div>
   );
 }

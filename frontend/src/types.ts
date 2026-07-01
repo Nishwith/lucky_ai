@@ -59,3 +59,10 @@ export interface SystemStatus {
   model: string;
   startup_report: StartupReport;
 }
+
+export interface PermissionRequest {
+  request_id: string;
+  tool_name: string;
+  params: Record<string, any>;
+  permission_level?: "AUTO" | "CONFIRM" | "DENY";
+}

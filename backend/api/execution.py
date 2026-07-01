@@ -34,8 +34,12 @@ async def resolve_permission(request_id: str, req: PermissionResponse):
 
 @router.get("/permissions/pending")
 async def list_pending_permissions():
-    """List all currently pending permission requests."""
+    """List all currently pending permission requests and system state."""
     from backend.tools.permissions import PENDING_CONFIRMATIONS
+    from backend.core.state import system_state
+    from backend.core.startup import STARTUP_REPORT
+    from backend.brain.config_loader import PROVIDER, MODEL
+    
     return {
         "pending": [
             {
@@ -43,6 +47,11 @@ async def list_pending_permissions():
                 "tool_name": info["tool_name"],
                 "params": info["params"]
             }
-            for rid, info in PENDING_CONFIRMATIONS.items()
-        ]
+            for rid, info in list(PENDING_CONFIRMATIONS.items())
+            if info.get("approved") is None
+        ],
+        "system_state": system_state.current_state,
+        "status": "degraded" if STARTUP_REPORT.get("degraded_mode", False) else "online",
+        "model": MODEL,
+        "provider": PROVIDER
     }

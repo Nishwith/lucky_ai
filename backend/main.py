@@ -79,8 +79,8 @@ app.add_middleware(
         "tauri://localhost",       # Tauri production build
     ],
     allow_credentials = True,
-    allow_methods     = ["*"],
-    allow_headers     = ["*"],
+    allow_methods     = ["GET", "POST", "OPTIONS"],
+    allow_headers     = ["Content-Type", "Authorization"],
 )
 
 app.include_router(chat_router,   prefix="/api", tags=["Chat"])

@@ -36,7 +36,7 @@ PA_KEYWORDS = ["project", "deadline", "task", "remind", "briefing", "plan my",
                "what do i have", "schedule", "overdue", "this week"]
 
 STUDY_KEYWORDS = ["explain", "summarise", "summarize", "notes", "revision",
-                  "what is", "how does", "study", "learn", "understand", "concept"]
+                  "study", "learn", "understand", "concept"]
 
 BIZ_KEYWORDS = ["email", "proposal", "client", "cold", "outreach", "pitch",
                 "invoice", "contract", "business", "sales"]
@@ -101,9 +101,15 @@ def detect_agent_with_details(message: str) -> Tuple[str, List[str], str, List[s
     # 5. Coding
     
     if "content" in matches:
-        selected_agent = "content"
-        matched_keywords = matches["content"]
-        reasoning = f"Matched content keywords: {matched_keywords}"
+        # If there is also a coding match and the message contains specific technical/coding keywords, prioritize coding
+        if "coding" in matches and any(k in msg for k in ["fastapi", "python", "javascript", "typescript", "html", "css", "react", "nextjs", "api", "backend", "frontend", "code", "build"]):
+            selected_agent = "coding"
+            matched_keywords = matches["coding"]
+            reasoning = f"Matched coding keywords (prioritized over content): {matched_keywords}"
+        else:
+            selected_agent = "content"
+            matched_keywords = matches["content"]
+            reasoning = f"Matched content keywords: {matched_keywords}"
     elif "pa" in matches:
         selected_agent = "pa"
         matched_keywords = matches["pa"]
@@ -139,11 +145,20 @@ def get_model_for_agent(agent: str) -> str:
     return SPECIALIST.get(agent, SPECIALIST["default"])
 
 
-def route(message: str) -> RoutingDecision:
+from typing import Optional
+
+def route(message: str, force_agent: Optional[str] = None) -> RoutingDecision:
     """
     Main routing function returning detailed RoutingDecision.
     """
-    agent, matched_keywords, reasoning, alternatives = detect_agent_with_details(message)
+    if force_agent and force_agent != "brain":
+        agent = force_agent
+        matched_keywords = []
+        reasoning = f"Routed forced agent override: '{force_agent}'"
+        alternatives = []
+    else:
+        agent, matched_keywords, reasoning, alternatives = detect_agent_with_details(message)
+        
     model = get_model_for_agent(agent)
     
     decision = RoutingDecision(

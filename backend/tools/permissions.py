@@ -28,11 +28,18 @@ async def check_permission(tool_name: str, params: dict, permission_level: str =
 
     # 2. Check the default permission level configured for the tool
     if tool_name == "run_command":
-        cmd = params.get("command", "")
+        cmd = params.get("command", "").strip()
         from backend.brain.config_loader import COMMAND_ALLOWLIST
-        if cmd.strip() in COMMAND_ALLOWLIST or any(cmd.strip().startswith(a) for a in COMMAND_ALLOWLIST):
-            logger.info(f"Command '{cmd}' is in allowlist. Auto-allowing.")
-            return True
+        # Split on shell operators to prevent injection via chained commands
+        # e.g. "git status && rm -rf /" must NOT match allowlist entry "git status"
+        import re
+        parts = re.split(r'[;&|`]|\|\||\&\&', cmd)
+        if len(parts) == 1:
+            # Only a single command (no chaining) — safe to check allowlist
+            if cmd in COMMAND_ALLOWLIST or any(cmd.startswith(a) for a in COMMAND_ALLOWLIST):
+                logger.info(f"Command '{cmd}' is in allowlist. Auto-allowing.")
+                return True
+
 
     if permission_level == "AUTO":
         return True
@@ -40,6 +47,34 @@ async def check_permission(tool_name: str, params: dict, permission_level: str =
         raise PermissionError(f"Permission permanently denied by security policy for tool '{tool_name}'")
     
     # 3. Handle CONFIRM (Interactive Prompt)
+    # Check for an identical active request in progress to avoid UI spam and duplicate waiter races
+    existing_rid = None
+    for rid, pending in list(PENDING_CONFIRMATIONS.items()):
+        if pending.get("tool_name") == tool_name and pending.get("params") == params and pending.get("approved") is None:
+            existing_rid = rid
+            break
+
+    if existing_rid:
+        logger.info(f"Duplicate permission request detected for '{tool_name}'. Joining existing Request ID: {existing_rid}")
+        pending_info = PENDING_CONFIRMATIONS[existing_rid]
+        pending_info["waiters"] += 1
+        event = pending_info["event"]
+        
+        try:
+            await asyncio.wait_for(event.wait(), timeout=60.0)
+        except asyncio.TimeoutError:
+            logger.warning(f"Shared permission request {existing_rid} for tool '{tool_name}' timed out.")
+            raise PermissionError(f"Permission confirmation timed out (60s) for tool '{tool_name}'")
+        finally:
+            pending_info["waiters"] -= 1
+            if pending_info["waiters"] == 0:
+                PENDING_CONFIRMATIONS.pop(existing_rid, None)
+                
+        if pending_info.get("approved") is True:
+            return True
+        else:
+            raise PermissionError(f"User denied permission to execute tool '{tool_name}'")
+
     request_id = str(uuid.uuid4())
     event = asyncio.Event()
     
@@ -47,7 +82,8 @@ async def check_permission(tool_name: str, params: dict, permission_level: str =
         "event": event,
         "approved": None,
         "tool_name": tool_name,
-        "params": params
+        "params": params,
+        "waiters": 1
     }
     PENDING_CONFIRMATIONS[request_id] = pending_info
     
@@ -64,13 +100,14 @@ async def check_permission(tool_name: str, params: dict, permission_level: str =
     try:
         await asyncio.wait_for(event.wait(), timeout=60.0)
     except asyncio.TimeoutError:
-        PENDING_CONFIRMATIONS.pop(request_id, None)
         logger.warning(f"Permission request {request_id} for tool '{tool_name}' timed out.")
         raise PermissionError(f"Permission confirmation timed out (60s) for tool '{tool_name}'")
+    finally:
+        pending_info["waiters"] -= 1
+        if pending_info["waiters"] == 0:
+            PENDING_CONFIRMATIONS.pop(request_id, None)
         
-    # Get user response details
-    user_response = PENDING_CONFIRMATIONS.pop(request_id, None)
-    if user_response and user_response["approved"] is True:
+    if pending_info.get("approved") is True:
         logger.info(f"Permission request {request_id} for tool '{tool_name}' approved by user.")
         return True
     else:

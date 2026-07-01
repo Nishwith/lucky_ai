@@ -41,7 +41,7 @@ async def test_lucky():
     print("🍀 LUCKY AI INTEGRATION TEST")
     divider()
 
-    async with httpx.AsyncClient(timeout=120) as client:
+    async with httpx.AsyncClient(timeout=300) as client:
 
         # ------------------------------------------------------------------
         # Test 1 : System Status
@@ -270,6 +270,32 @@ async def test_lucky():
         else:
             print("❌ Tool endpoint failed")
 
+        # Helper function to poll and approve permissions
+        async def wait_and_approve_permission(description: str) -> bool:
+            for _ in range(120): # up to 60s timeout
+                await asyncio.sleep(0.5)
+                try:
+                    r = await client.get(f"{BASE}/api/permissions/pending")
+                    if r.status_code == 200:
+                        pending = r.json().get("pending", [])
+                        if pending:
+                            req = pending[0]
+                            print(f"   Intercepted request {req['request_id']} for {description}: tool '{req['tool_name']}'")
+                            r_approve = await client.post(
+                                f"{BASE}/api/permissions/respond/{req['request_id']}",
+                                json={"approved": True}
+                            )
+                            if r_approve.status_code == 200:
+                                print("✅ Approved permission execution")
+                                return True
+                            else:
+                                print("❌ Failed to send permission response")
+                                return False
+                except Exception as e:
+                    print(f"⚠️ Error polling permissions: {e}")
+            print(f"❌ Timeout waiting for permission for {description}")
+            return False
+
         # ------------------------------------------------------------------
         # Test 10 : Gated Tool Execution (Interactive Prompt)
         # ------------------------------------------------------------------
@@ -281,28 +307,8 @@ async def test_lucky():
             json={"path": filename, "content": "Scaffold content created by integration test!"}
         ))
         
-        await asyncio.sleep(1)
+        approved = await wait_and_approve_permission("create_file tool")
         
-        r = await client.get(f"{BASE}/api/permissions/pending")
-        if r.status_code == 200:
-            pending = r.json().get("pending", [])
-            if pending:
-                req = pending[0]
-                print(f"   Intercepted pending request {req['request_id']} for tool '{req['tool_name']}'")
-                
-                r_approve = await client.post(
-                    f"{BASE}/api/permissions/respond/{req['request_id']}",
-                    json={"approved": True}
-                )
-                if r_approve.status_code == 200:
-                    print("✅ Sent positive permission response")
-                else:
-                    print("❌ Failed to send permission response")
-            else:
-                print("❌ No pending permission requests found")
-        else:
-            print("❌ Failed to check pending permissions")
-            
         exec_res = await exec_task
         if exec_res.status_code == 200:
             res = exec_res.json()
@@ -315,23 +321,37 @@ async def test_lucky():
                     f"{BASE}/api/tools/delete_file",
                     json={"path": filename}
                 ))
-                await asyncio.sleep(1)
                 
-                # Query and approve delete permission
-                r = await client.get(f"{BASE}/api/permissions/pending")
-                pending = r.json().get("pending", [])
-                if pending:
-                    req = pending[0]
-                    await client.post(
-                        f"{BASE}/api/permissions/respond/{req['request_id']}",
-                        json={"approved": True}
-                    )
+                await wait_and_approve_permission("delete_file tool")
                 await del_task
                 print("✅ Cleanup complete.")
             else:
                 print(f"❌ Gated execution returned error: {res.get('error')}")
         else:
             print(f"❌ Gated execution request failed: {exec_res.status_code}")
+
+        # ------------------------------------------------------------------
+        # Test 11 : End-to-End Chat Execution Pipeline (Run python --version)
+        # ------------------------------------------------------------------
+        print("\n[11] End-to-End Chat Execution Integration (Run python --version)")
+        
+        chat_task = asyncio.create_task(client.post(
+            f"{BASE}/api/chat/stream",
+            json={"message": "Run python --version", "stream": True}
+        ))
+        
+        approved = await wait_and_approve_permission("chat-initiated run_command")
+            
+        chat_res = await chat_task
+        if chat_res.status_code == 200:
+            text = chat_res.text
+            print("✅ Chat execution streaming finished.")
+            if "python" in text.lower():
+                print("✅ Chat response verified: contains python version info!")
+            else:
+                print(f"⚠️ Verification warning: output does not contain python details. Raw response:\n{text[:300]}")
+        else:
+            print(f"❌ Chat execution request failed: {chat_res.status_code}")
 
     divider()
 

@@ -28,11 +28,13 @@ from ..memory.vector_db import build_semantic_context, remember
 router = APIRouter()
 
 
-# ── Request / Response models ─────────────────────────────────────────────────
+from typing import Optional
+
 class ChatRequest(BaseModel):
-    message:    str
-    session_id: str  = ""
-    stream:     bool = True
+    message:     str
+    session_id:  str  = ""
+    stream:      bool = True
+    force_agent: Optional[str] = None
 
 
 class ChatResponse(BaseModel):
@@ -66,8 +68,8 @@ async def chat_stream(req: ChatRequest):
     """
     session_id = req.session_id or str(uuid.uuid4())
 
-    # 1. Route to best agent + model
-    decision = route(req.message)
+    # 1. Route to best agent + model (supporting manual force override)
+    decision = route(req.message, req.force_agent)
     agent = decision.agent
     model = decision.model
 
@@ -94,13 +96,54 @@ async def chat_stream(req: ChatRequest):
             full_response = []
             yield f"data: {{\"agent\": \"{agent}\", \"model\": \"{model}\", \"session_id\": \"{session_id}\"}}\n\n"
 
-            async for token in brain.think_stream(
-                prompt=req.message,
-                system=system,
-                history=history,
-            ):
-                full_response.append(token)
-                yield f"data: {token}\n\n"
+            from backend.agents import get_agent_executor, build_agent_context
+            executor = get_agent_executor(agent)
+            
+            if executor:
+                # 1. Context compile
+                context = build_agent_context(session_id, req.message)
+                
+                # 2. Planning phase
+                yield f"data: ⚙️ {executor.name} is planning workspace steps...\n\n"
+                steps = await executor.plan(req.message, context)
+                
+                # 3. Execution phase
+                if steps:
+                    step_names = ", ".join(f"'{s.get('tool_name')}'" for s in steps)
+                    yield f"data: ⏳ Running {len(steps)} planned operations: {step_names}...\n\n"
+                    results = await executor.execute(steps)
+                else:
+                    yield f"data: 📝 No tool operations needed. Resolving response...\n\n"
+                    results = {"step_results": []}
+                
+                # 4. Reporting summary prompt build
+                summary_prompt, system_prompt = await executor.report(results, req.message, context)
+                
+                # 5. Final report think streaming
+                async for token in brain.think_stream(
+                    prompt=summary_prompt,
+                    system=system_prompt,
+                    history=history,
+                    temperature=0.5
+                ):
+                    full_response.append(token)
+                    yield f"data: {token}\n\n"
+            else:
+                from backend.brain.planner import plan_and_execute_stream
+                planner_stream = await plan_and_execute_stream(req.message, system, history)
+                
+                if planner_stream is not None:
+                    async for token in planner_stream:
+                        full_response.append(token)
+                        yield f"data: {token}\n\n"
+                else:
+                    async for token in brain.think_stream(
+                        prompt=req.message,
+                        system=system,
+                        history=history,
+                    ):
+                        full_response.append(token)
+                        yield f"data: {token}\n\n"
 
             # Save complete response
             complete = "".join(full_response)
@@ -129,8 +172,8 @@ async def chat(req: ChatRequest):
     """
     session_id = req.session_id or str(uuid.uuid4())
 
-    # Route + build context
-    decision = route(req.message)
+    # Route + build context (supporting manual force override)
+    decision = route(req.message, req.force_agent)
     agent = decision.agent
     model = decision.model
     
@@ -148,12 +191,30 @@ async def chat(req: ChatRequest):
 
     # Get response
     try:
-        reply = await brain.think_with(
-            model=model,
-            prompt=req.message,
-            system=system,
-            history=history,
-        )
+        from backend.agents import get_agent_executor, build_agent_context
+        executor = get_agent_executor(agent)
+        
+        if executor:
+            context = build_agent_context(session_id, req.message)
+            steps = await executor.plan(req.message, context)
+            results = await executor.execute(steps)
+            summary_prompt, system_prompt = await executor.report(results, req.message, context)
+            reply = await brain.think(
+                prompt=summary_prompt,
+                system=system_prompt,
+                history=history,
+                temperature=0.5
+            )
+        else:
+            from backend.brain.planner import plan_and_execute
+            reply = await plan_and_execute(req.message, system, history)
+            if reply is None:
+                reply = await brain.think_with(
+                    model=model,
+                    prompt=req.message,
+                    system=system,
+                    history=history,
+                )
     finally:
         system_state.transition_to(SystemState.READY, "Non-stream response finished")
 

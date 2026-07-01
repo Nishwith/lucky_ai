@@ -17,7 +17,8 @@ class ToolRegistry:
                 "name": name,
                 "description": description,
                 "permission_level": permission_level,
-                "input_model": input_model
+                "input_model": input_model,
+                "input_schema": input_model.schema() if input_model else {}
             }
             logger.debug(f"Registered tool: {name} (Permission: {permission_level})")
             return func
@@ -33,7 +34,7 @@ class ToolRegistry:
                 "name": t["name"],
                 "description": t["description"],
                 "permission_level": t["permission_level"],
-                "input_schema": t["input_model"].schema() if t["input_model"] else {}
+                "input_schema": t["input_schema"]
             }
             for t in self._tools.values()
         ]
