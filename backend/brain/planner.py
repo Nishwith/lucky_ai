@@ -160,6 +160,15 @@ async def plan_and_execute_stream(
         
         logger.info(f"Tool '{tool_name}' finished in {duration:.2f}s. Success={res.success}")
         
+        # Verification check
+        yield f"🔍 Verifying tool execution...\n"
+        from backend.tools.verification import verify_tool_execution
+        verified, ver_msg = await verify_tool_execution(tool_name, params, res.success, res.output, res.error)
+        if verified:
+            yield f"✓ {ver_msg}\n"
+        else:
+            yield f"❌ {ver_msg}\n"
+            
         yield "📥 Collecting output and formatting response...\n\n"
         
         system_state.transition_to(SystemState.THINKING, "Formatting tool output response")
@@ -172,7 +181,8 @@ Execution Result:
 Success: {res.success}
 Output: {res.output}
 Error: {res.error}
-Metadata: {res.meta}
+Verified: {verified}
+Verification Details: {ver_msg}
 
 Please explain or summarize this result to the user naturally. Do not invent any execution output.
 """
@@ -229,6 +239,10 @@ async def plan_and_execute(
     system_state.transition_to(SystemState.EXECUTING, f"Executing tool {tool_name}")
     res = await tool_registry.execute(tool_name, params)
     
+    # Run verification check
+    from backend.tools.verification import verify_tool_execution
+    verified, ver_msg = await verify_tool_execution(tool_name, params, res.success, res.output, res.error)
+    
     system_state.transition_to(SystemState.THINKING, "Formatting tool output response")
     
     summary_prompt = f"""The user asked: "{message}"
@@ -238,7 +252,8 @@ Execution Result:
 Success: {res.success}
 Output: {res.output}
 Error: {res.error}
-Metadata: {res.meta}
+Verified: {verified}
+Verification Details: {ver_msg}
 
 Please explain or summarize this result to the user naturally. Do not invent any execution output.
 """
