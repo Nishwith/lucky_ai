@@ -103,31 +103,37 @@ async def chat_stream(req: ChatRequest):
                 # 1. Context compile
                 context = build_agent_context(session_id, req.message)
                 
-                # 2. Planning phase
-                yield f"data: ⚙️ {executor.name} is planning workspace steps...\n\n"
-                steps = await executor.plan(req.message, context)
-                
-                # 3. Execution phase
-                if steps:
-                    step_names = ", ".join(f"'{s.get('tool_name')}'" for s in steps)
-                    yield f"data: ⏳ Running {len(steps)} planned operations: {step_names}...\n\n"
-                    results = await executor.execute(steps)
+                if hasattr(executor, "run_stream"):
+                    # Delegate streaming directly to the agent's custom task orchestrator
+                    async for token in executor.run_stream(req.message, context, history):
+                        full_response.append(token)
+                        yield f"data: {token}\n\n"
                 else:
-                    yield f"data: 📝 No tool operations needed. Resolving response...\n\n"
-                    results = {"step_results": []}
-                
-                # 4. Reporting summary prompt build
-                summary_prompt, system_prompt = await executor.report(results, req.message, context)
-                
-                # 5. Final report think streaming
-                async for token in brain.think_stream(
-                    prompt=summary_prompt,
-                    system=system_prompt,
-                    history=history,
-                    temperature=0.5
-                ):
-                    full_response.append(token)
-                    yield f"data: {token}\n\n"
+                    # 2. Planning phase
+                    yield f"data: ⚙️ {executor.name} is planning workspace steps...\n\n"
+                    steps = await executor.plan(req.message, context)
+                    
+                    # 3. Execution phase
+                    if steps:
+                        step_names = ", ".join(f"'{s.get('tool_name')}'" for s in steps)
+                        yield f"data: ⏳ Running {len(steps)} planned operations: {step_names}...\n\n"
+                        results = await executor.execute(steps)
+                    else:
+                        yield f"data: 📝 No tool operations needed. Resolving response...\n\n"
+                        results = {"step_results": []}
+                    
+                    # 4. Reporting summary prompt build
+                    summary_prompt, system_prompt = await executor.report(results, req.message, context)
+                    
+                    # 5. Final report think streaming
+                    async for token in brain.think_stream(
+                        prompt=summary_prompt,
+                        system=system_prompt,
+                        history=history,
+                        temperature=0.5
+                    ):
+                        full_response.append(token)
+                        yield f"data: {token}\n\n"
             else:
                 from backend.brain.planner import plan_and_execute_stream
                 planner_stream = await plan_and_execute_stream(req.message, system, history)
